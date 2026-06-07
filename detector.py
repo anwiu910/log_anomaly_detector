@@ -1,9 +1,7 @@
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
-import mysql.connector
 from datetime import datetime
-from config import DB_CONFIG
 
 # Path to your log file
 log_path = "logs/access.log"
@@ -23,11 +21,12 @@ with open(log_path, "r") as f:
 
 # Detect anomalies
 anomalies = []
+
 for line in logs:
     for anomaly_type, pattern in patterns.items():
         if re.search(pattern, line, re.IGNORECASE):
             anomalies.append({
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # detection timestamp
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "log": line.strip(),
                 "type": anomaly_type
             })
@@ -35,51 +34,40 @@ for line in logs:
 # Convert to DataFrame
 df = pd.DataFrame(anomalies)
 
-# If no anomalies, exit
+# Exit if no anomalies found
 if df.empty:
     print("[INFO] No anomalies detected.")
     exit()
 
-# Print detected anomalies
+# Display detected anomalies
 print("\n[INFO] Detected Anomalies:\n")
 print(df.to_string(index=False))
 
-# Visualization: Count anomalies by type
+# Save anomalies to Excel
+try:
+    output_file = "detected_anomalies.xlsx"
+
+    df.to_excel(output_file, index=False)
+
+    print(f"\n[INFO] {len(df)} anomalies saved to {output_file}")
+
+except Exception as e:
+    print(f"[ERROR] Excel Export: {e}")
+
+# Generate Visualization
 plt.figure(figsize=(8, 5))
-df["type"].value_counts().plot(kind="bar", color="orange")
+
+df["type"].value_counts().plot(kind="bar")
+
 plt.title("Security Anomalies Detected")
 plt.xlabel("Anomaly Type")
 plt.ylabel("Count")
 plt.xticks(rotation=45)
+
 plt.tight_layout()
+
+plt.savefig("anomaly_report.png")
+
+print("[INFO] Chart saved as anomaly_report.png")
+
 plt.show()
-
-# Save anomalies to MySQL
-try:
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS anomalies (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            timestamp DATETIME,
-            log TEXT,
-            type VARCHAR(50)
-        )
-    """)
-
-    for _, row in df.iterrows():
-        cursor.execute(
-            "INSERT INTO anomalies (timestamp, log, type) VALUES (%s, %s, %s)",
-            (row["timestamp"], row["log"], row["type"])
-        )
-
-    conn.commit()
-    print(f"\n[INFO] {len(df)} anomalies saved to MySQL.")
-
-except mysql.connector.Error as err:
-    print(f"[ERROR] MySQL: {err}")
-finally:
-    if 'conn' in locals() and conn.is_connected():
-        cursor.close()
-        conn.close()
