@@ -10,7 +10,7 @@ log_path = "logs/access.log"
 patterns = {
     "Failed Password": r"Failed password",
     "Invalid User": r"Invalid user",
-    "SQL Injection": r"(\%27)|(\')|(\-\-)|(\%23)|(#)|(\%3D)|(=)|(\bunion\b)|(\bselect\b)",
+    "SQL Injection": r"(%20OR%20\d+=\d+)|(\bunion\b.*\bselect\b)|(\bunion\b)|(\bselect\b)|(')|(--)",
     "XSS": r"<script>.*</script>",
     "Brute Force": r"too many attempts|authentication failure"
 }
